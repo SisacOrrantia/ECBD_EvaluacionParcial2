@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción de Calidad del Aire | PM2.5</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input[type="number"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .unit {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .result-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .result-category {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .result-description {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .result-details {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .result-details h4 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            padding: 5px 0;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .info-box strong {
+            color: #667eea;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .result-value {
+                font-size: 36px;
+            }
+
+            .result-category {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Predicción de Calidad del Aire</h1>
+            <p class="subtitle">Sistema de predicción de PM2.5 basado en Machine Learning</p>
+            <span class="badge">k-NN Optimizado</span>
+        </header>
+
+        <form id="predictionForm">
+            <div class="form-group">
+                <label for="so2">Dióxido de Azufre (SO₂)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="so2" name="so2" step="0.01" min="0" required 
+                           placeholder="Ej: 15.5">
+                    <span class="unit">µg/m³</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="no2">Dióxido de Nitrógeno (NO₂)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="no2" name="no2" step="0.01" min="0" required 
+                           placeholder="Ej: 28.3">
+                    <span class="unit">µg/m³</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="rspm">Partículas Suspendidas Respirables (RSPM)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="rspm" name="rspm" step="0.01" min="0" required 
+                           placeholder="Ej: 45.2">
+                    <span class="unit">µg/m³</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="spm">Partículas Suspendidas Totales (SPM)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="spm" name="spm" step="0.01" min="0" required 
+                           placeholder="Ej: 120.8">
+                    <span class="unit">µg/m³</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="predictBtn">
+                🔮 Predecir PM2.5
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando predicción...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <div class="result-header">
+                <h3>Resultado de la Predicción</h3>
+            </div>
+            <div class="result-value" id="resultValue"></div>
+            <div class="result-category" id="resultCategory"></div>
+            <div class="result-description" id="resultDescription"></div>
+            
+            <div class="result-details">
+                <h4>Valores de Entrada:</h4>
+                <div class="detail-item">
+                    <span>SO₂:</span>
+                    <span id="inputSO2"></span>
+                </div>
+                <div class="detail-item">
+                    <span>NO₂:</span>
+                    <span id="inputNO2"></span>
+                </div>
+                <div class="detail-item">
+                    <span>RSPM:</span>
+                    <span id="inputRSPM"></span>
+                </div>
+                <div class="detail-item">
+                    <span>SPM:</span>
+                    <span id="inputSPM"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ Información:</strong> Este sistema utiliza un modelo de Machine Learning 
+            (k-NN Optimizado) entrenado con datos reales de calidad del aire para predecir 
+            los niveles de PM2.5 basándose en otros contaminantes.
+        </div>
+
+        <footer>
+            <p><strong>Evaluación Parcial 2</strong> - Extracción de Conocimientos en BD</p>
+            <p>Alumno: Orrantia Gonzalez German Sisac</p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('predictionForm');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const predictBtn = document.getElementById('predictBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Obtener valores del formulario
+            const formData = {
+                so2: parseFloat(document.getElementById('so2').value),
+                no2: parseFloat(document.getElementById('no2').value),
+                rspm: parseFloat(document.getElementById('rspm').value),
+                spm: parseFloat(document.getElementById('spm').value)
+            };
+
+            // Ocultar resultados previos y errores
+            result.classList.remove('active');
+            error.classList.remove('active');
+
+            // Mostrar loading
+            loading.classList.add('active');
+            predictBtn.disabled = true;
+
+            try {
+                // Realizar petición al backend
+                const response = await fetch('http://localhost:5000/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Mostrar resultado
+                    displayResult(data);
+                } else {
+                    // Mostrar error
+                    showError(data.error || 'Error al procesar la predicción');
+                }
+            } catch (err) {
+                showError('Error de conexión con el servidor. Asegúrate de que el servidor Flask esté ejecutándose.');
+            } finally {
+                loading.classList.remove('active');
+                predictBtn.disabled = false;
+            }
+        });
+
+        function displayResult(data) {
+            // Actualizar valores
+            document.getElementById('resultValue').textContent = `${data.prediccion} µg/m³`;
+            document.getElementById('resultCategory').textContent = data.categoria;
+            document.getElementById('resultDescription').textContent = data.descripcion;
+            
+            // Actualizar valores de entrada
+            document.getElementById('inputSO2').textContent = `${data.valores_entrada.SO2} µg/m³`;
+            document.getElementById('inputNO2').textContent = `${data.valores_entrada.NO2} µg/m³`;
+            document.getElementById('inputRSPM').textContent = `${data.valores_entrada.RSPM} µg/m³`;
+            document.getElementById('inputSPM').textContent = `${data.valores_entrada.SPM} µg/m³`;
+            
+            // Aplicar color de fondo según la categoría
+            result.style.background = data.color;
+            
+            // Mostrar resultado
+            result.classList.add('active');
+
+            // Scroll suave al resultado
+            result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function showError(message) {
+            error.textContent = `❌ ${message}`;
+            error.classList.add('active');
+            
+            // Scroll al error
+            error.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Validación en tiempo real
+        const inputs = document.querySelectorAll('input[type="number"]');
+        inputs.forEach(input => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value < 0) {
+                    e.target.value = 0;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
